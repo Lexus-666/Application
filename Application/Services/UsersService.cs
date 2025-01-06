@@ -7,16 +7,19 @@ namespace kursah_5semestr.Services
     public class UsersService : IUsersService
     {
         private AppDbContext _context;
+        private ILogger _logger;
 
-        public UsersService(AppDbContext context)
+        public UsersService(AppDbContext context, ILogger<UsersService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<User> CreateUser(User user)
         {
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+            _logger.LogInformation($"Created user {user.Id}");
             return user;
         }
 
@@ -34,6 +37,7 @@ namespace kursah_5semestr.Services
             user.CartItems = new List<CartItem>();
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
+            _logger.LogInformation($"Cleared cart for user {user.Id}");
         }
     }
 }

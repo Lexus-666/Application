@@ -6,10 +6,12 @@ namespace kursah_5semestr.Services
     public class CartItemsService : ICartItemsService
     {
         private AppDbContext _context;
+        private ILogger _logger;
 
-        public CartItemsService(AppDbContext context)
+        public CartItemsService(AppDbContext context, ILogger<CartItemsService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<CartItem> CreateCartItem(CartItem CartItem)
@@ -17,6 +19,7 @@ namespace kursah_5semestr.Services
             CartItem.Id = Guid.NewGuid();
             _context.CartItems.Add(CartItem);
             await _context.SaveChangesAsync();
+            _logger.LogInformation($"Created cart item {CartItem.Id}");
             return CartItem;
         }
 
@@ -36,21 +39,23 @@ namespace kursah_5semestr.Services
                         _context.CartItems.Update(CartItem);
                         await _context.SaveChangesAsync();
                         transaction.Commit();
+                        _logger.LogInformation($"Updated cart item {id}");
                         return CartItem;
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     transaction.Rollback();
+                    _logger.LogError(ex, $"Error updating cart item {id}");
                     return null;
                 }
             }
             return null;
         }
 
-        public IList<CartItem> GetCartItems()
+        public IList<CartItem> GetCartItems(Guid userId)
         {
-            return _context.CartItems.Include(ci => ci.Product).ToList();
+            return _context.CartItems.Where(ci => ci.UserId == userId).Include(ci => ci.Product).ToList();
         }
 
         public CartItem? GetCartItemById(Guid id)
@@ -65,9 +70,13 @@ namespace kursah_5semestr.Services
             {
                 _context.CartItems.Remove(CartItem);
                 await _context.SaveChangesAsync();
+                _logger.LogInformation($"Deleted cart item {id}");
                 return true;
             }
-            else { return false; }
+            else {
+                _logger.LogWarning($"Cart item {id} not found");
+                return false; 
+            }
         }
     }
 }

@@ -6,7 +6,7 @@
 
         public Task<CartItem?> UpdateCartItem(Guid id, CartItem patch);
 
-        public IList<CartItem> GetCartItems();
+        public IList<CartItem> GetCartItems(Guid userId);
 
         public CartItem? GetCartItemById(Guid id);
 

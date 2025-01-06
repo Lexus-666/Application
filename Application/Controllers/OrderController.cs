@@ -85,9 +85,9 @@ namespace kursah_5semestr.Contracts
             {
                 return NotFound(new StatusOutDto("error", "Order not found"));
             }
-            if (order.Status != "new")
+            if (order.Status != OrderStatus.New)
             {
-                return BadRequest(new StatusOutDto("error", $"Cannot delete an order with status '{order.Status}'"));
+                return BadRequest(new StatusOutDto("error", "Cannot delete an order with status other than 'new'"));
             }
             var success = await _ordersService.DeleteOrder(id);
             if (!success)

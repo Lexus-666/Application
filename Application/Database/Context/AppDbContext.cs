@@ -22,8 +22,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Product> Products { get; set; }
 
-    public virtual DbSet<Transaction> Transactions { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<Order> Orders { get; set; }
@@ -63,17 +61,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Title).HasMaxLength(128);
         });
 
-        modelBuilder.Entity<Transaction>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("Transactions_pkey");
-
-            entity.HasOne(e => e.User).WithMany()
-                .HasForeignKey(e => e.UserId)
-                .HasConstraintName("Transactions_UserId_fkey");
-
-            entity.Property(e => e.Id).ValueGeneratedNever();
-        });
-
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("Users_pkey");
@@ -94,6 +81,8 @@ public partial class AppDbContext : DbContext
             entity.HasMany(e => e.OrderDetails).WithOne();
 
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.Property(e => e.Status).HasConversion<string>();
         });
 
         modelBuilder.Entity<OrderDetails>(entity =>

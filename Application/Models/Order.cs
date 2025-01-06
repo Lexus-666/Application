@@ -6,7 +6,7 @@ public partial class Order
 {
     public Order() { }
 
-    private Order(Guid id, DateTime date, User user, string status, double amount, ICollection<OrderDetails> details)
+    private Order(Guid id, DateTime date, User user, OrderStatus status, double amount, ICollection<OrderDetails> details)
     {
         Id = id;
         UserId = user.Id;
@@ -17,7 +17,7 @@ public partial class Order
         OrderDetails = details;
     }
 
-    private static string BasicCheck(double amount, User user, string status, IList<CartItem> cartItems)
+    private static string BasicCheck(double amount, User user, OrderStatus status, IList<CartItem> cartItems)
     {
         var error = string.Empty;
 
@@ -33,15 +33,11 @@ public partial class Order
         {
             error = "User must be specified.";
         }
-        else if (string.IsNullOrWhiteSpace(status))
-        {
-            error = "Status cannot be empty or null.";
-        }
 
         return error;
     }
 
-    public static (Order? Order, string Error) Create(Guid Id, User user, string status, double amount, IList<CartItem> cartItems, ICollection<OrderDetails> details)
+    public static (Order? Order, string Error) Create(Guid Id, User user, OrderStatus status, double amount, IList<CartItem> cartItems, ICollection<OrderDetails> details)
     {
         var error = BasicCheck(amount, user, status, cartItems);
 

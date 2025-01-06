@@ -2,11 +2,11 @@
 {
     public interface IOrdersService
     {
-        public Task<Order> CreateOrder(User user, string status, IList<CartItem> cartItems);
+        public Task<Order> CreateOrder(User user, OrderStatus status, IList<CartItem> cartItems);
 
         public Task<Order> CreateOrder(User user);
 
-        public Task<Order?> UpdateOrderStatus(Guid id, string status);
+        public Task<Order?> UpdateOrderStatus(Guid id, OrderStatus status);
 
         public Task<Order?> GetOrderById(Guid id);
 

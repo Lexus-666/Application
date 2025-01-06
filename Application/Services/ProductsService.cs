@@ -6,10 +6,12 @@ namespace kursah_5semestr.Services
     public class ProductsService : IProductsService
     {
         private AppDbContext _context;
+        private ILogger _logger;
 
-        public ProductsService(AppDbContext context)
+        public ProductsService(AppDbContext context, ILogger<ProductsService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Product> CreateProduct(Product product)
@@ -17,6 +19,7 @@ namespace kursah_5semestr.Services
             product.Id = Guid.NewGuid();
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
+            _logger.LogInformation($"Created product {product.Id}");
             return product;
         }
 
@@ -48,12 +51,14 @@ namespace kursah_5semestr.Services
                         _context.Products.Update(product);
                         await _context.SaveChangesAsync();
                         transaction.Commit();
+                        _logger.LogInformation($"Updated product {id}");
                         return product;
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     transaction.Rollback();
+                    _logger.LogError(ex, $"Error updating product {id}");
                     return null;
                 }
             }
@@ -77,9 +82,13 @@ namespace kursah_5semestr.Services
             {
                 _context.Products.Remove(product);
                 await _context.SaveChangesAsync();
+                _logger.LogInformation($"Deleted product {id}");
                 return true;
             }
-            else { return false; }
+            else {
+                _logger.LogError($"Error deleting product {id}");
+                return false; 
+            }
         }
 
         public async Task<(bool success, IList<Product?> insufficientStocks)> ProcessCreateOrder(Order order)
@@ -101,6 +110,7 @@ namespace kursah_5semestr.Services
                     product.Quantity -= od.Quantity;
                     _context.Products.Update(product);
                     await _context.SaveChangesAsync();
+                    _logger.LogInformation($"Decreased stock for product {product.Id} (order {order.Id})");
                 }
             }
             return (true, []);
@@ -116,6 +126,7 @@ namespace kursah_5semestr.Services
                     product.Quantity += od.Quantity;
                     _context.Products.Update(product);
                     await _context.SaveChangesAsync();
+                    _logger.LogInformation($"Returned stock for product {product.Id} (order {order.Id})");
                 }
             }
         }

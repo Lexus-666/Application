@@ -14,11 +14,13 @@ namespace kursah_5semestr.Services
     {
         private IBrokerService _brokerService;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger _logger;
 
-        public DataUpdaterService(IBrokerService brokerService, IServiceScopeFactory scopeFactory)
+        public DataUpdaterService(IBrokerService brokerService, IServiceScopeFactory scopeFactory, ILogger<DataUpdaterService> logger)
         {
             _brokerService = brokerService;
             _scopeFactory = scopeFactory;
+            _logger = logger;
         }
 
         private async Task ProcessMessage(String message)
@@ -34,6 +36,7 @@ namespace kursah_5semestr.Services
                             switch (instanceChanged.Action)
                             {
                                 case "create":
+                                    _logger.LogInformation($"Creating user {instanceChanged.Data["Login"].ToString()}");
                                     var (user, error) = User.Create(
                                         id: Guid.Parse(instanceChanged.Data["Id"].ToString()),
                                         login: instanceChanged.Data["Login"].ToString(),
@@ -53,8 +56,21 @@ namespace kursah_5semestr.Services
                             switch (instanceChanged.Action)
                             {
                                 case "update":
+                                    _logger.LogInformation($"Updating order {instanceChanged.Data["Id"].ToString()}");
                                     var orderId = Guid.Parse(instanceChanged.Data["Id"].ToString()!);
-                                    var status = instanceChanged.Data["Status"].ToString()!;
+                                    OrderStatus status;
+                                    switch (instanceChanged.Data["Status"].ToString()!)
+                                    {
+                                        case "new":
+                                            status = OrderStatus.New;
+                                            break;
+                                        case "paid":
+                                            status = OrderStatus.Paid;
+                                            break;
+                                        default:
+                                            _logger.LogError($"Bad order status '{instanceChanged.Data["Status"]}'");
+                                            return;
+                                    }
                                     using (IServiceScope scope = _scopeFactory.CreateScope())
                                     {
                                         var ordersService = scope.ServiceProvider.GetService<IOrdersService>()!;
@@ -68,7 +84,7 @@ namespace kursah_5semestr.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger.LogError(ex, "Error processing message");
             }
 
         }

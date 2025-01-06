@@ -17,12 +17,14 @@ namespace kursah_5semestr.Controllers
         private IProductsService _productsService;
         private ICartItemsService _cartItemsService;
         private IUsersService _usersService;
+        private ILogger _logger;
 
-        public BaseController(IProductsService productsService, ICartItemsService cartItemsService, IUsersService usersService)
+        public BaseController(IProductsService productsService, ICartItemsService cartItemsService, IUsersService usersService, ILogger<BaseController> logger)
         {
             _productsService = productsService;
             _cartItemsService = cartItemsService;
             _usersService = usersService;
+            _logger = logger;
         }
 
         [Route("/products")]
@@ -32,6 +34,7 @@ namespace kursah_5semestr.Controllers
             var user = Utils.GetAuthenticatedUser(HttpContext, _usersService);
             if (user == null || user.Login != "admin")
             {
+                _logger.LogWarning($"User is not allowed to manage products ('{user?.Login}')");
                 return Unauthorized(new StatusOutDto("error", "Only admin can manage products"));
             }
             var (product, error) = Product.Create(dto.Title, dto.Price, dto.Quantity, dto.Description);
@@ -51,6 +54,7 @@ namespace kursah_5semestr.Controllers
             var user = Utils.GetAuthenticatedUser(HttpContext, _usersService);
             if (user == null || user.Login != "admin")
             {
+                _logger.LogWarning($"User is not allowed to manage products ('{user?.Login}')");
                 return Unauthorized(new StatusOutDto("error", "Only admin can manage products"));
             }
             var patch = new Product();
@@ -86,6 +90,7 @@ namespace kursah_5semestr.Controllers
             var user = Utils.GetAuthenticatedUser(HttpContext, _usersService);
             if (user == null || user.Login != "admin")
             {
+                _logger.LogWarning($"User is not allowed to manage products ('{user?.Login}')");
                 return Unauthorized(new StatusOutDto("error", "Only admin can manage products"));
             }
             var ok = await _productsService.DeleteProduct(id);
@@ -105,6 +110,7 @@ namespace kursah_5semestr.Controllers
         {
             var user = Utils.GetAuthenticatedUser(HttpContext, _usersService);
             if (user == null) {
+                _logger.LogWarning("User session information not found");
                 return Unauthorized(new StatusOutDto("error"));
             }
             if (dto.ProductId == null)
@@ -133,6 +139,7 @@ namespace kursah_5semestr.Controllers
             var user = Utils.GetAuthenticatedUser(HttpContext, _usersService);
             if (user == null)
             {
+                _logger.LogWarning("User session information not found");
                 return Unauthorized(new StatusOutDto("error"));
             }
             var patch = new CartItem();
@@ -153,7 +160,13 @@ namespace kursah_5semestr.Controllers
         [HttpGet]
         public ActionResult<IList<CartItemOutDto>> GetCartItems()
         {
-            var CartItems = _cartItemsService.GetCartItems();
+            var user = Utils.GetAuthenticatedUser(HttpContext, _usersService);
+            if (user == null)
+            {
+                _logger.LogWarning("User session information not found");
+                return Unauthorized(new StatusOutDto("error"));
+            }
+            var CartItems = _cartItemsService.GetCartItems(user.Id);
             var outDtos = CartItems.Select(ci => new CartItemOutDto(ci.Id, ci.Product, ci.Quantity));
             return Ok(outDtos);
         }

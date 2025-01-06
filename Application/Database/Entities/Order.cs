@@ -14,7 +14,7 @@ public partial class Order
 
     public User User { get; set; }
 
-    public string Status { get; set; }
+    public OrderStatus Status { get; set; }
 
     public double Amount { get; set; }
 

@@ -9,15 +9,17 @@ namespace kursah_5semestr.Services
         private AppDbContext _context;
         private IBrokerService _brokerService;
         private IProductsService _productsService;
+        private ILogger _logger;
 
-        public OrdersService(AppDbContext context, IBrokerService brokerService, IProductsService productsService)
+        public OrdersService(AppDbContext context, IBrokerService brokerService, IProductsService productsService, ILogger<OrdersService> logger)
         {
             _context = context;
             _brokerService = brokerService;
-            _productsService = productsService; 
+            _productsService = productsService;
+            _logger = logger;
         }
 
-        public async Task<Order> CreateOrder(User user, string status, IList<CartItem> cartItems)
+        public async Task<Order> CreateOrder(User user, OrderStatus status, IList<CartItem> cartItems)
         {
             //calculate total amount
             double totalAmount = cartItems.Sum(
@@ -38,6 +40,7 @@ namespace kursah_5semestr.Services
 
             if (!string.IsNullOrEmpty(error))
             {
+                _logger.LogError($"Error creating order: {error}");
                 throw new InvalidOperationException(error);
             }
 
@@ -60,6 +63,7 @@ namespace kursah_5semestr.Services
                     message += "Insufficient stocks: ";
                     var names = string.Join(", ", productWithInsuffStocks.Select(p => p.Title));
                     message += names;
+                    _logger.LogError($"Error creating order: {message}");
                     throw new InvalidOperationException(message);
                 }
             }
@@ -74,7 +78,7 @@ namespace kursah_5semestr.Services
             {
                 try
                 {
-                    var order = await CreateOrder(user, "new", [.. user.CartItems]);
+                    var order = await CreateOrder(user, OrderStatus.New, [.. user.CartItems]);
                     user.CartItems = [];
                     _context.Users.Update(user);
                     await _context.SaveChangesAsync();
@@ -86,29 +90,33 @@ namespace kursah_5semestr.Services
                         Amount: order.Amount, 
                         OrderDetails: [], 
                         UserId: order.UserId);
+                    _logger.LogInformation($"Created order {order.Id}");
                     var message = new InstanceChangedOut(Action: "create", Entity: "order", Data: dto);
                     await _brokerService.SendMessage("changes", message);
                     return order;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     transaction.Rollback();
+                    _logger.LogError(ex, "Error creating order");
                     throw;
                 }
             }
         }
 
 
-        public async Task<Order?> UpdateOrderStatus(Guid id, string newStatus)
+        public async Task<Order?> UpdateOrderStatus(Guid id, OrderStatus newStatus)
         {
             var order = await _context.Orders.FindAsync(id);
             if (order == null)
             {
+                _logger.LogWarning($"Order {id} not found");
                 return null;
             }
 
             order.Status = newStatus;
             _context.Orders.Update(order);
+            _logger.LogInformation($"Updated status of the order {id}");
             await _context.SaveChangesAsync();
 
             return order;
@@ -146,6 +154,7 @@ namespace kursah_5semestr.Services
             var order = await _context.Orders.FindAsync(id);
             if (order == null)
             {
+                _logger.LogWarning($"Order {id} not found");
                 return false;
             }
 
@@ -155,12 +164,14 @@ namespace kursah_5semestr.Services
                 {
                     await _productsService.ProcessDeleteOrder(order);
                     _context.Orders.Remove(order);
+                    _logger.LogInformation($"Deleted order {id}");
                     await _context.SaveChangesAsync();
                     transaction.Commit();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     transaction.Rollback();
+                    _logger.LogError(ex, $"Error deleting order {id}");
                     throw;
                 }
                 return true;
